@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Sorteo de Piezas</title>
+<style>
+:root{
+  --bg:#07111f;--card:#111d2e;--text:#f8fafc;--muted:#8fa1b8;
+  --line:rgba(255,255,255,.09);--blue:#38bdf8;--green:#34d399;--gold:#fbbf24;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{background:var(--bg)}
+body{
+  margin:0;min-height:100vh;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,system-ui,sans-serif;
+  color:var(--text);
+  background:
+    radial-gradient(circle at 15% 0%,rgba(56,189,248,.13),transparent 32%),
+    radial-gradient(circle at 90% 15%,rgba(52,211,153,.08),transparent 28%),
+    linear-gradient(160deg,#050b14,#07111f 50%,#0c1727);
+}
+.wrap{
+  width:min(760px,100%);margin:auto;
+  padding:calc(22px + env(safe-area-inset-top)) 16px calc(34px + env(safe-area-inset-bottom));
+}
+header{margin-bottom:18px}
+.eyebrow{font-size:11px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--blue);margin-bottom:7px}
+h1{margin:0;font-size:clamp(34px,9vw,52px);line-height:.98;letter-spacing:-.045em}
+.subtitle{color:var(--muted);margin-top:9px;font-size:14px}
+
+.machine{
+  background:rgba(16,28,45,.82);border:1px solid var(--line);border-radius:24px;overflow:hidden;
+  box-shadow:0 20px 55px rgba(0,0,0,.32);backdrop-filter:blur(14px);
+}
+.draw-area{
+  min-height:270px;position:relative;display:flex;flex-direction:column;
+  justify-content:center;align-items:center;padding:44px 18px 38px;text-align:center;
+}
+.draw-area::after{
+  content:"";position:absolute;inset:0;
+  background:radial-gradient(circle at center,rgba(56,189,248,.09),transparent 55%);
+  pointer-events:none;
+}
+.room-label{
+  position:absolute;top:19px;left:0;right:0;z-index:1;color:var(--muted);
+  font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
+}
+#drawName{
+  position:relative;z-index:1;font-size:clamp(38px,10vw,68px);
+  font-weight:950;letter-spacing:-.05em;line-height:1.05;min-height:1.15em;
+}
+#drawStatus{position:relative;z-index:1;margin-top:13px;color:var(--muted);font-size:14px;min-height:20px}
+.progress-track{height:5px;background:#0a1422}
+#progress{width:0;height:100%;background:linear-gradient(90deg,var(--blue),var(--green));transition:width .3s ease}
+.controls{padding:16px;border-top:1px solid var(--line);display:flex;gap:10px}
+button{
+  flex:1;min-height:52px;border-radius:15px;border:0;font-size:16px;font-weight:900;cursor:pointer
+}
+button:active{transform:scale(.985)}
+button:disabled{opacity:.42}
+#start{background:#f8fafc;color:#07111f}
+#reset{flex:0 0 104px;background:#17263a;color:#dbeafe;border:1px solid var(--line)}
+
+.section-title{display:flex;align-items:center;justify-content:space-between;margin:25px 2px 12px}
+.section-title h2{font-size:19px;margin:0}
+#counter{color:var(--muted);font-size:13px}
+
+.rooms{display:grid;gap:11px}
+.room{
+  border:1px solid var(--line);border-radius:18px;padding:15px 16px;
+  background:rgba(255,255,255,.035);transition:.3s ease;
+}
+.room.active{
+  border-color:rgba(56,189,248,.48);
+  box-shadow:0 0 0 1px rgba(56,189,248,.08),0 10px 30px rgba(0,0,0,.14);
+  transform:translateY(-1px);
+}
+.room.complete{background:rgba(52,211,153,.045)}
+.room.special{border-color:rgba(251,191,36,.28)}
+.room-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:11px}
+.room-type{color:#d7e2f0;font-size:13px;font-weight:850}
+.room-state{color:var(--muted);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em}
+.chips{display:flex;flex-wrap:wrap;gap:7px;min-height:34px}
+.placeholder{color:#607188;font-size:14px;padding:6px 0}
+.chip{
+  display:inline-flex;align-items:center;border-radius:999px;padding:7px 11px;
+  background:#203149;border:1px solid rgba(255,255,255,.08);
+  font-size:14px;font-weight:850;animation:pop .35s cubic-bezier(.18,.9,.35,1.25)
+}
+.chip.pair{background:rgba(56,189,248,.11);border-color:rgba(56,189,248,.24)}
+.chip.extra{background:rgba(251,191,36,.13);border-color:rgba(251,191,36,.38);color:#fde68a}
+.note{display:none;margin-top:10px;color:#fcd34d;font-size:12px;line-height:1.35}
+.note.show{display:block}
+.finish{
+  display:none;margin-top:16px;padding:15px 16px;text-align:center;border-radius:16px;
+  border:1px solid rgba(52,211,153,.28);background:rgba(52,211,153,.08);
+  color:#bbf7d0;font-size:14px;font-weight:850
+}
+.finish.show{display:block}
+.small{color:#53657b;font-size:11px;text-align:center;margin-top:16px}
+@keyframes pop{0%{opacity:0;transform:scale(.72)}100%{opacity:1;transform:scale(1)}}
+@media(min-width:700px){.rooms{grid-template-columns:1fr 1fr}.room:first-child{grid-column:1/-1}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Asignación de habitaciones</div>
+    <h1>Sorteo de piezas</h1>
+    <div class="subtitle">Las parejas predefinidas participan juntas en el sorteo.</div>
+  </header>
+
+  <section class="machine">
+    <div class="draw-area">
+      <div class="room-label" id="roomLabel">Listos para comenzar</div>
+      <div id="drawName">¿Listos?</div>
+      <div id="drawStatus">Presiona “Iniciar sorteo”</div>
+    </div>
+    <div class="progress-track"><div id="progress"></div></div>
+    <div class="controls">
+      <button id="start">Iniciar sorteo</button>
+      <button id="reset">Reiniciar</button>
+    </div>
+  </section>
+
+  <div class="section-title">
+    <h2>Distribución</h2>
+    <div id="counter">0 / 10 sorteos</div>
+  </div>
+
+  <div class="rooms" id="rooms"></div>
+  <div class="finish" id="finish">✓ Sorteo terminado. Todas las piezas quedaron asignadas.</div>
+  <div class="small">Asignación automática · parejas predefinidas sorteadas como una unidad</div>
+</div>
+
+<script>
+const roomData = [
+  {id:0,title:"Pieza · 3 cabros",capacity:"3"},
+  {id:1,title:"Pieza · 2 cabros",capacity:"2",special:true},
+  {id:2,title:"Pieza · 2 cabros",capacity:"2"},
+  {id:3,title:"Pieza · 2 parejas",capacity:"2 parejas"},
+  {id:4,title:"Pieza · 1 pareja",capacity:"1 pareja"},
+  {id:5,title:"Pieza M · 1 pareja",capacity:"1 pareja"},
+  {id:6,title:"Pieza · 1 pareja",capacity:"1 pareja"}
+];
+
+// Las parejas fijas se sortean juntas.
+// Mery aparece una vez solo como asignación extra y después con Tagle.
+const drawSequence = [
+  {label:"Guzmán + Bert", people:["Guzmán","Bert"], room:0, pair:true},
+  {label:"Juan", people:["Juan"], room:0},
+
+  {label:"Diego + Cleme", people:["Diego","Cleme"], room:1, pair:true},
+  {label:"Mery", people:["Mery"], room:1, extra:true},
+
+  {label:"Opazo + Lewin", people:["Opazo","Lewin"], room:2, pair:true},
+
+  {label:"Brunner + Belén", people:["Brunner","Belén"], room:3, pair:true},
+  {label:"Velasco + Maida", people:["Velasco","Maida"], room:3, pair:true},
+
+  {label:"Tagle + Mery", people:["Tagle","Mery"], room:4, pair:true},
+  {label:"Erenchun + Tere", people:["Erenchun","Tere"], room:5, pair:true},
+  {label:"Cabezón + Paula", people:["Cabezón","Paula"], room:6, pair:true}
+];
+
+const selectorPool = [
+  "Guzmán + Bert",
+  "Juan",
+  "Diego + Cleme",
+  "Mery",
+  "Opazo + Lewin",
+  "Brunner + Belén",
+  "Velasco + Maida",
+  "Tagle + Mery",
+  "Erenchun + Tere",
+  "Cabezón + Paula"
+];
+
+let running=false;
+let assigned=[];
+let currentIndex=0;
+
+const roomsEl=document.getElementById("rooms");
+const startBtn=document.getElementById("start");
+const resetBtn=document.getElementById("reset");
+const drawName=document.getElementById("drawName");
+const drawStatus=document.getElementById("drawStatus");
+const roomLabel=document.getElementById("roomLabel");
+const progress=document.getElementById("progress");
+const counter=document.getElementById("counter");
+const finish=document.getElementById("finish");
+
+function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
+
+function renderRooms(){
+  roomsEl.innerHTML="";
+  roomData.forEach(r=>{
+    const el=document.createElement("div");
+    el.className="room"+(r.special?" special":"");
+    el.id=`room-${r.id}`;
+    el.innerHTML=`
+      <div class="room-head">
+        <div class="room-type">${r.title}</div>
+        <div class="room-state" id="state-${r.id}">Esperando</div>
+      </div>
+      <div class="chips" id="chips-${r.id}">
+        <span class="placeholder" id="ph-${r.id}">Sin asignaciones todavía</span>
+      </div>
+      ${r.special?`<div class="note" id="note-${r.id}">⚠ Mery salió sorteado además para esta pieza, así que finalmente quedan 3.</div>`:""}
+    `;
+    roomsEl.appendChild(el);
+  });
+}
+
+function clearActive(){
+  document.querySelectorAll(".room").forEach(el=>el.classList.remove("active"));
+}
+
+function updateState(roomId){
+  const roomDraws=assigned.filter(x=>x.room===roomId);
+  const peopleCount=roomDraws.reduce((n,x)=>n+x.people.length,0);
+  const state=document.getElementById(`state-${roomId}`);
+
+  if(roomId===1 && peopleCount===3){
+    state.textContent="3 asignados";
+    document.getElementById(`room-${roomId}`).classList.add("complete");
+    document.getElementById(`note-${roomId}`).classList.add("show");
+    return;
+  }
+
+  if(roomId===3){
+    const pairs=roomDraws.filter(x=>x.pair).length;
+    state.textContent=pairs>=2?"Completa":`${pairs} / 2 parejas`;
+    if(pairs>=2) document.getElementById(`room-${roomId}`).classList.add("complete");
+    return;
+  }
+
+  if([4,5,6].includes(roomId)){
+    const pairs=roomDraws.filter(x=>x.pair).length;
+    state.textContent=pairs>=1?"Completa":"0 / 1 pareja";
+    if(pairs>=1) document.getElementById(`room-${roomId}`).classList.add("complete");
+    return;
+  }
+
+  const target=Number(roomData[roomId].capacity);
+  state.textContent=peopleCount>=target?"Completa":`${peopleCount} / ${target}`;
+  if(peopleCount>=target) document.getElementById(`room-${roomId}`).classList.add("complete");
+}
+
+function assignUnit(item){
+  clearActive();
+  const room=document.getElementById(`room-${item.room}`);
+  room.classList.add("active");
+
+  const ph=document.getElementById(`ph-${item.room}`);
+  if(ph) ph.remove();
+
+  const chips=document.getElementById(`chips-${item.room}`);
+  const chip=document.createElement("span");
+  chip.className="chip"+(item.pair?" pair":"")+(item.extra?" extra":"");
+  chip.textContent=item.label;
+  chips.appendChild(chip);
+
+  assigned.push(item);
+  updateState(item.room);
+
+  counter.textContent=`${assigned.length} / ${drawSequence.length} sorteos`;
+  progress.style.width=`${assigned.length/drawSequence.length*100}%`;
+}
+
+async function spinTo(item,index){
+  const room=roomData[item.room];
+  roomLabel.textContent=`Sorteando para ${room.title}`;
+  drawStatus.textContent=`Sorteo ${index+1} de ${drawSequence.length}`;
+
+  clearActive();
+  document.getElementById(`room-${item.room}`).classList.add("active");
+
+  const rounds=14+Math.floor(Math.random()*5);
+  let last="";
+  for(let i=0;i<rounds;i++){
+    let candidate;
+    do{
+      candidate=selectorPool[Math.floor(Math.random()*selectorPool.length)];
+    }while(candidate===last);
+    last=candidate;
+    drawName.textContent=candidate;
+    await sleep(58+i*7);
+  }
+
+  drawName.textContent=item.label;
+  drawStatus.textContent=`${item.label} → ${room.title}`;
+  assignUnit(item);
+
+  if(navigator.vibrate) navigator.vibrate(35);
+  await sleep(720);
+}
+
+async function runDraw(){
+  if(running)return;
+  running=true;
+  startBtn.disabled=true;
+  resetBtn.disabled=true;
+  finish.classList.remove("show");
+
+  if(currentIndex===0){
+    drawName.textContent="Mezclando…";
+    roomLabel.textContent="Preparando sorteo";
+    drawStatus.textContent="Mezclando nombres y parejas";
+    await sleep(750);
+  }
+
+  for(;currentIndex<drawSequence.length;currentIndex++){
+    await spinTo(drawSequence[currentIndex],currentIndex);
+  }
+
+  clearActive();
+  drawName.textContent="¡Listo!";
+  roomLabel.textContent="Sorteo terminado";
+  drawStatus.textContent="Todas las piezas fueron asignadas";
+  finish.classList.add("show");
+
+  running=false;
+  startBtn.disabled=false;
+  resetBtn.disabled=false;
+}
+
+function resetDraw(){
+  if(running)return;
+  assigned=[];
+  currentIndex=0;
+  renderRooms();
+  drawName.textContent="¿Listos?";
+  roomLabel.textContent="Listos para comenzar";
+  drawStatus.textContent="Presiona “Iniciar sorteo”";
+  progress.style.width="0%";
+  counter.textContent=`0 / ${drawSequence.length} sorteos`;
+  finish.classList.remove("show");
+}
+
+renderRooms();
+startBtn.addEventListener("click",runDraw);
+resetBtn.addEventListener("click",resetDraw);
+</script>
+</body>
+</html>
